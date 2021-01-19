@@ -3,9 +3,11 @@ import cv2
 from pydobot import Dobot
 import tkinter as tk
 import random as rd
+from matplotlib import cm
 from PIL import Image, ImageTk
 from tkinter import *
 import threading
+from math import factorial
 import time
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,6 +21,15 @@ list_j3 = []
 list_j4 = []
 state = True
 itt=0
+def comb(n, k):
+    return factorial(n) // (factorial(k) * factorial(n - k))
+def get_bezier_curve(points):
+    n = len(points) - 1
+    return lambda t: sum( comb(n, i) * t**i * (1 - t)**(n - i) * points[i] for i in range(n + 1) )
+def evaluate_bezier(points, total):
+    bezier = get_bezier_curve(points)
+    new_points = np.array([bezier(t) for t in np.linspace(0, 1, total)])
+    return new_points[:,0], new_points[:,1],new_points[:,2]
 def job():
     global state
     global list_z, list_x, list_y
@@ -36,7 +47,7 @@ root.geometry('900x800')
 root.title("操作介面")
 """ GUI Function set """
 btn = []
-btn_context = ['Home','Detect','Next','Previous','Sucker','Move','Place']
+btn_context = ['Home','開相機','拍照','Previous','存檔','開始','看路徑']
 port = list_ports.comports()[0].device
 device = Dobot(port=port, verbose=False)
 (x, y, z, r, j1, j2, j3, j4) = device.pose()
@@ -115,7 +126,7 @@ def CVJOB():
         print('mLB',mLB)
         """
     # cv2.imshow('123',binary)
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     itt = 0
     # cv2.waitKey()
     while (True):
@@ -157,8 +168,8 @@ def CVJOB():
                     centerX.append(cX)
                     centerY.append(cY)
                     # cnt_count = cnt_count + 1
-                    f1 = int(cY * 0.541 + 48.602)
-                    f2 = int(cX * 0.571 - 93.28)
+                    f1 = int(cY * 0.541 + 8.602)
+                    f2 = int(cX * 0.571 - 124.28)
                     target[0]=f1
                     target[1]=f2
                     text = str( f1) + ',' + str( f2 )
@@ -241,6 +252,10 @@ def Previous():
     print("Previous")
 def Sucker():
     print("Sucker")
+    with open('path_data'+str(itt)+'.txt', 'w') as filehandle:
+        for place in range(len(list_x)):
+            filehandle.writelines("%s," % int(list_x[place]) + "%s," % int(list_y[place])+"%s\n" % int(list_z[place]))
+
 def Move():
     global target
     t3 = threading.Thread(target=MoveJOB)
@@ -248,20 +263,20 @@ def Move():
     # 執行該子執行緒
     t3.start()
     print("Move")
+
+points= np.array([[58, -187, -40],
+                           [150, 65,20], #障礙物1
+                            [241, -72,30],#障礙物2
+                           [target[0],target[1] ,10]])
 def MoveJOB():
     global state
     t = threading.Thread(target=job)
     # 執行該子執行緒
     t.start()
-    P0, P1, P2 = np.array([[58, -187, 40],
-                           [228-rd.randint(-10,10), -110-rd.randint(-10,10), 10],
-                           [target[0], target[1], 10]])
-    # define bezier curve
-    P = lambda t: (1 - t) ** 2 * P0 + 2 * t * (1 - t) * P1 + t ** 2 * P2
-    # evaluate the curve on [0, 1] sliced in 50 points
-    points = np.array([P(t) for t in np.linspace(0, 1, 50)])
-    # get x and y coordinates of points separately
-    xb, yb, zb = points[:, 0], points[:, 1], points[:, 2]  # plot
+
+
+    x, y, z = points[:, 0], points[:, 1], points[:, 2]
+    xb, yb, zb = evaluate_bezier(points, 50)
     for st in range(0,len(xb),2):
         device.move_to(xb[st], yb[st], zb[st], r, wait=False)
     device.move_to(xb[49], yb[49], -63, r, wait=True)
@@ -285,6 +300,9 @@ def Place():
     # 建立 3D 圖形
     fig = plt.figure()
     ax = fig.gca(projection='3d')
+    ax.set_zlim(-63,200)
+    ax.set_xlim(-50*0.6,450*0.6)
+    ax.set_ylim(-350*0.6,150*0.6)
     # 產生 3D 座標資料
     z_array = np.array(list_z)
     x_array = np.array(list_x)
@@ -293,8 +311,25 @@ def Place():
     # 繪製 3D 曲線
     ax.auto_scale_xyz([0, 500], [0, 500], [0, 500])
     ax.plot(x_array, y_array, z_array, color='gray', label='Arm path')
-    ax.scatter(x_array, y_array, z_array, c=z_array, cmap='jet', label='via point')
+    asur = ax.scatter(x_array, y_array, z_array, c=z_array, cmap=cm.gist_rainbow, label='via point')
+    fig.colorbar(asur, shrink=0.5, aspect=5)
+#畫障礙物
+    us = np.linspace(0, 2 * np.pi, 50)
+    zs = np.linspace(-63, 74-63, 2)
 
+    us, zs = np.meshgrid(us, zs)
+
+    xs = 30 * np.cos(us)+points[1][0]
+    ys = 30 * np.sin(us)+points[1][1]
+    ax.plot_surface(xs, ys, zs, color='b')
+    us1 = np.linspace(0, 2 * np.pi, 50)
+    zs1 = np.linspace(-63, 50-63, 2)
+
+    us1, zs1 = np.meshgrid(us1, zs1)
+
+    xs1 = 40 * np.cos(us1)+points[2][0]
+    ys1 = 40 * np.sin(us1)+points[2][1]
+    ax.plot_surface(xs1, ys1, zs1, color='b')
     # 顯示圖例
     ax.legend()
     print(list_x)
