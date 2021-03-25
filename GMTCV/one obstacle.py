@@ -168,8 +168,8 @@ def CVJOB():
                     centerX.append(cX)
                     centerY.append(cY)
                     # cnt_count = cnt_count + 1
-                    f1 = int(cY * 0.541 - 3.1564)
-                    f2 = int(cX * 0.571 - 127)
+                    f1 = int(cY * 0.541 + 8.602)
+                    f2 = int(cX * 0.571 - 124.28)
                     target[0]=f1
                     target[1]=f2
                     text = str( f1) + ',' + str( f2 )
@@ -265,9 +265,8 @@ def Move():
     print("Move")
 
 points= np.array([[58, -187, -40],
-                           [156,-38,30],  #障礙物1
-                            [230,70,20], #障礙物2
-                           [target[0],target[1],10]])
+                           [143,-61,30],  #障礙物1
+                           [233,57,10]])
 def MoveJOB():
     global state
     t = threading.Thread(target=job)
@@ -322,14 +321,7 @@ def Place():
     xs = 30 * np.cos(us)+points[1][0]
     ys = 30 * np.sin(us)+points[1][1]
     ax.plot_surface(xs, ys, zs, color='b')
-    us1 = np.linspace(0, 2 * np.pi, 50)
-    zs1 = np.linspace(-63, 50-63, 2)
 
-    us1, zs1 = np.meshgrid(us1, zs1)
-
-    xs1 = 40 * np.cos(us1)+points[2][0]
-    ys1 = 40 * np.sin(us1)+points[2][1]
-    ax.plot_surface(xs1, ys1, zs1, color='b')
     # 顯示圖例
     ax.legend()
     print(list_x)

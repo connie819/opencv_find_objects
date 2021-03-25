@@ -21,6 +21,7 @@ list_j3 = []
 list_j4 = []
 state = True
 itt=0
+要動了=False
 def comb(n, k):
     return factorial(n) // (factorial(k) * factorial(n - k))
 def get_bezier_curve(points):
@@ -34,7 +35,7 @@ def job():
     global state
     global list_z, list_x, list_y
     while(state):
-        print('do')
+        #print('do')
         (a,b,c,d,e,f,g,h)=device.pose()
         list_x.append(a)
         list_y.append(b)
@@ -48,18 +49,15 @@ root.title("操作介面")
 """ GUI Function set """
 btn = []
 btn_context = ['Home','開相機','拍照','Previous','存檔','開始','看路徑']
-port = list_ports.comports()[0].device
-device = Dobot(port=port, verbose=False)
-(x, y, z, r, j1, j2, j3, j4) = device.pose()
+port = list_ports.comports()[0].device       # COM端口  dobot
+device = Dobot(port=port, verbose=False)    # dobot
+(x, y, z, r, j1, j2, j3, j4) = device.pose()    # dobot
 detect_state=False
 if(detect_state==False):
     target=[0,0]
 def Home():
     print('Home')
-
-    #PTPMode.MOVJ_ANGLE
     device.move_to(j1, j2, j3, j4, wait=False)
-    #device.PTPMode.MOVJ_ANGLE(j1+10, j2, j3, j4, wait=True)
     var = []
     for j in range(6):
         var.append(ent[j].get())
@@ -68,20 +66,16 @@ def Detect():
     t1 = threading.Thread(target=CVJOB)
     t1.start()
 def CVJOB():
-    global target,detect_state,im
+    global target,detect_state,im,要動了
     detect_state =True
-    # import argparse
+    '''
     def get_gray(img):  # 灰階
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
         return gray
-
     def get_blurred(img):  # 模糊化
         gray = get_gray(img)
         blurred = cv2.GaussianBlur(gray, (7, 7), 0)
-
         return blurred
-
     def get_binary(img):  # 黑白化
         blur = get_blurred(img)
         ret, binary = cv2.threshold(blur, 127, 255, cv2.THRESH_BINARY)
@@ -91,91 +85,60 @@ def CVJOB():
     def get_contours(img):  # 獲取輪廓
         binary = get_binary(img)
         contours, hierachy = cv2.findContours(binary, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-
         return contours
-
     def draw_contours(img):  # 畫輪廓
-
         contours = get_contours(img)
         cv2.drawContours(img, contours, -1, (0, 0, 255), 3)
-
         return None
-
     def all_contour_X_Y(img):  # 要返回所有輪廓的X，Y值
-
         g_img = get_gray(img)
         binary_img = get_binary(g_img)
         cnt = get_contours(binary_img)
         draw_contours(img, cnt, -1(0, 0, 255), 3)
-
         return img
-
-    """    lefttext = 'L'+str(Num+1)
-        cv2.putText(im, lefttext, (leftmost), cv2.FONT_HERSHEY_DUPLEX,1, (0, 255, 255), 1, cv2.LINE_AA)
-        print (leftmost)# show point and check 
-        """
-    """
-        print (centerX)
-        print (centerY)
-
-        print ("X=",leftY[0]/(-1*mRB[0]))
-        print ('left point ',left_point)
-        print ('bottom point ',bottom_point)
-        print ('right point ',right_point)
-        print( 'mRb' ,mRB) #把numpy轉換成list
-        print('mLB',mLB)
-        """
-    # cv2.imshow('123',binary)
+    '''
     cap = cv2.VideoCapture(1)
     itt = 0
-    # cv2.waitKey()
     while (True):
+        #print(target)
         # im = cv2.imread('2object.JPG')
         ret, frame = cap.read()
         im = cv2.resize(frame, (500, 500), interpolation=cv2.INTER_CUBIC)
-
         gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-        # hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
         blurred = cv2.GaussianBlur(gray, (7, 7), 0)
         low_threshold = 1
         high_threshold = 10
         edges = cv2.Canny(blurred, low_threshold, high_threshold)
-        ret, binary = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
+        #ret, binary = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
         contours, hierachy = cv2.findContours(edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-        # cv2.drawContours(im, contours, -1, (0, 0, 255), 3)
         cnt_count = []
-        # cnt_count_index = cnt_count -1
         centerX = []
         centerY = []
-        # print(bool(contours))
-        have_countor = 0
-        for cnt in range(len(contours)):
-            epsilon = 0.04 * cv2.arcLength(contours[cnt], True)
-            approx = cv2.approxPolyDP(contours[cnt], epsilon, True)
-            # print(len(approx))
-            area = cv2.contourArea(contours[cnt])
-
-            if (len(approx) < 5 and len(approx) > 3 and area > 2000 and area < 4000):
-                # print(area)
-                cv2.drawContours(im, contours[cnt], -1, (255, 255, 255), 3)
-                M = cv2.moments(contours[cnt])
-                if M["m00"] != 0:
-                    cX = int(M["m10"] / M["m00"])
-
-                    cY = int(M["m01"] / M["m00"])
-                    # print(area)
-                    cnt_count.append(cnt)
-                    centerX.append(cX)
-                    centerY.append(cY)
-                    # cnt_count = cnt_count + 1
-                    f1 = int(cY * 0.541 - 3.1564)
-                    f2 = int(cX * 0.571 - 127)
-                    target[0]=f1
-                    target[1]=f2
-                    text = str( f1) + ',' + str( f2 )
-                    cv2.putText(im, text, (50, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
-                    cv2.circle(im, (cX, cY), 10, (1, 227, 254), -1)
-
+        #have_countor = 0
+        if(要動了==False):
+            for cnt in range(len(contours)):
+                epsilon = 0.04 * cv2.arcLength(contours[cnt], True)
+                approx = cv2.approxPolyDP(contours[cnt], epsilon, True)
+                area = cv2.contourArea(contours[cnt])
+                if (len(approx) < 5 and len(approx) > 3 and area > 2000 and area < 4000):
+                    cv2.drawContours(im, contours[cnt], -1, (255, 255, 255), 3)
+                    M = cv2.moments(contours[cnt])
+                    if M["m00"] != 0:
+                        cX = int(M["m10"] / M["m00"])
+                        cY = int(M["m01"] / M["m00"])
+                        cnt_count.append(cnt)
+                        centerX.append(cX)
+                        centerY.append(cY)
+                        f1 = int(cY * 0.541 -3)
+                        f2 = int(cX * 0.571 - 130)
+                        target[0]=f1
+                        target[1]=f2
+                        #print('已更改')
+                        text = str( f1) + ',' + str( f2 )
+                        cv2.putText(im, text, (50, 50), cv2.FONT_HERSHEY_DUPLEX, 1, (0, 255, 255), 1, cv2.LINE_AA)
+                        cv2.circle(im, (cX, cY), 10, (1, 227, 254), -1)
+        cv2.imshow('123', im)
+        cv2.imshow('bin', edges)
         left_point = []  # define for save 4 most point
         right_point = []
         top_point = []
@@ -218,25 +181,10 @@ def CVJOB():
             mRB.append((bottomY[Num] - rightY[Num]) / (bottomX[Num] - rightX[Num]))
             mLB.append((bottomY[Num] - leftY[Num]) / (bottomX[Num] - leftX[Num]))
             X_position = leftY[0] / (-1 * mRB[0])
-
-        """
-        print(centerX)
-        print(centerY)
-
-        print("X=", leftY[0] / (-1 * mRB[0]))
-        print('left point ', left_point)
-        print('bottom point ', bottom_point)
-        print('right point ', right_point)
-        print('mRb', mRB)  # 把numpy轉換成list
-        print('mLB', mLB)
-        """
-        cv2.imshow('123', im)
-        cv2.imshow('bin', edges)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
         elif cv2.waitKey(1) & 0xFF == ord('s'):  # 按s存檔
             itt = itt + 1;
-
 
     cap.release()
     cv2.destroyAllWindows()
@@ -259,24 +207,24 @@ def Sucker():
 def Move():
     global target
     t3 = threading.Thread(target=MoveJOB)
-
     # 執行該子執行緒
     t3.start()
     print("Move")
 
-points= np.array([[58, -187, -40],
-                           [156,-38,30],  #障礙物1
-                            [230,70,20], #障礙物2
-                           [target[0],target[1],10]])
 def MoveJOB():
-    global state
+    global state,要動了,target
+    要動了 = True
     t = threading.Thread(target=job)
     # 執行該子執行緒
     t.start()
-
-
+    points = np.array([[58, -187, -40],
+                       [168, -166, 30],  # 無障礙物1
+                       [target[0], target[1], 10]])
     x, y, z = points[:, 0], points[:, 1], points[:, 2]
+    print(x,y,z)
     xb, yb, zb = evaluate_bezier(points, 50)
+    print(xb[49], yb[49], zb[49])
+
     for st in range(0,len(xb),2):
         device.move_to(xb[st], yb[st], zb[st]+10, r, wait=False)
     device.move_to(xb[49], yb[49], -63, r, wait=True)
@@ -290,9 +238,7 @@ def MoveJOB():
     device.suck(False)
     device.move_to(58, -187, 30, r, wait=True)
     state = False
-
-
-
+    要動了 = False
 
 def Place():
     global list_z,list_x,list_y,itt
@@ -307,29 +253,11 @@ def Place():
     z_array = np.array(list_z)
     x_array = np.array(list_x)
     y_array = np.array(list_y)
-
     # 繪製 3D 曲線
     ax.auto_scale_xyz([0, 500], [0, 500], [0, 500])
     ax.plot(x_array, y_array, z_array, color='gray', label='Arm path')
     asur = ax.scatter(x_array, y_array, z_array, c=z_array, cmap=cm.gist_rainbow, label='via point')
     fig.colorbar(asur, shrink=0.5, aspect=5)
-#畫障礙物
-    us = np.linspace(0, 2 * np.pi, 50)
-    zs = np.linspace(-63, 74-63, 2)
-
-    us, zs = np.meshgrid(us, zs)
-
-    xs = 30 * np.cos(us)+points[1][0]
-    ys = 30 * np.sin(us)+points[1][1]
-    ax.plot_surface(xs, ys, zs, color='b')
-    us1 = np.linspace(0, 2 * np.pi, 50)
-    zs1 = np.linspace(-63, 50-63, 2)
-
-    us1, zs1 = np.meshgrid(us1, zs1)
-
-    xs1 = 40 * np.cos(us1)+points[2][0]
-    ys1 = 40 * np.sin(us1)+points[2][1]
-    ax.plot_surface(xs1, ys1, zs1, color='b')
     # 顯示圖例
     ax.legend()
     print(list_x)

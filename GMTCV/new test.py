@@ -1,16 +1,15 @@
-from serial.tools import list_ports
-import cv2
-from pydobot import Dobot
-import tkinter as tk
-import random as rd
-from matplotlib import cm
-from PIL import Image, ImageTk
-from tkinter import *
-import threading
-from math import factorial
-import time
-import matplotlib.pyplot as plt
-import numpy as np
+# 若要設置自動歸零，則先運行一次手臂依照攝影機座標位置轉動到物件位置但不進行吸取的動作，若手臂未能移動到物件中心位置，
+# 則利用手動將物件中心移動到手臂位置，再將手臂轉動移開，利用攝影機將物件位置再次進行視覺辨識出座標，兩者相差大小利用算式去進行運算
+from serial.tools import list_ports  # 從 serial.tool 中引進 list_ports(列表端口)
+import cv2  # 引進 cv2(opencv-python)(讀取圖檔)
+from pydobot import Dobot  # 從 pydobot 中引進 Dobot
+import tkinter as tk  # 引進 tkinter 以 tk 表示(GUI使用者介面)
+from matplotlib import cm  # 從 matplotlib 中引進 cm(繪圖工具)
+import threading  # 引進 threading (當運作子程式時，主程式依舊執行)
+from math import factorial  # 從 math 中引進 factorial
+import time  # 引進 time
+import matplotlib.pyplot as plt  # 引進 matplotlib.pyplot 以 plt 表示
+import numpy as np  # 引進 numpy 以 np表示(陣列)
 list_x = []
 list_y = []
 list_z = []
@@ -19,132 +18,75 @@ list_j1 = []
 list_j2 = []
 list_j3 = []
 list_j4 = []
-state = True
-itt=0
+state = True   # 宣告state = 真
+itt = 0
 def comb(n, k):
     return factorial(n) // (factorial(k) * factorial(n - k))
-def get_bezier_curve(points):
+def get_bezier_curve(points):  # 得到貝塞爾曲線
     n = len(points) - 1
     return lambda t: sum( comb(n, i) * t**i * (1 - t)**(n - i) * points[i] for i in range(n + 1) )
-def evaluate_bezier(points, total):
+def evaluate_bezier(points, total): # 評估貝塞爾曲線
     bezier = get_bezier_curve(points)
     new_points = np.array([bezier(t) for t in np.linspace(0, 1, total)])
     return new_points[:,0], new_points[:,1],new_points[:,2]
-def job():
-    global state
-    global list_z, list_x, list_y
-    while(state):
+def job(): # 操作介面
+    global state             # 全域變數global
+    global list_z, list_x, list_y   # 全域變數list_z, list_x, list_y
+    while(state):  # 當state=true
         print('do')
         (a,b,c,d,e,f,g,h)=device.pose()
-        list_x.append(a)
-        list_y.append(b)
-        list_z.append(c)
-        list_r.append(d)
-        time.sleep(0.01)
+        list_x.append(a)  # 加入a元素進入list_x
+        list_y.append(b)  # 加入b元素進入list_y
+        list_z.append(c)  # 加入c元素進入list_z
+        list_r.append(d)  # 加入d元素進入list_r
+        time.sleep(0.01)  # 暫停執行0.01秒
+
 from tkinter import filedialog
 root  = tk.Tk()
-root.geometry('900x800')
-root.title("操作介面")
+root.geometry('900x800')   # 介面大小
+root.title("操作介面")    # 介面名稱
 """ GUI Function set """
 btn = []
 btn_context = ['Home','開相機','拍照','Previous','存檔','開始','看路徑']
 port = list_ports.comports()[0].device
 device = Dobot(port=port, verbose=False)
 (x, y, z, r, j1, j2, j3, j4) = device.pose()
-detect_state=False
+detect_state=False  #檢測狀態
 if(detect_state==False):
     target=[0,0]
+
 def Home():
     print('Home')
-
-    #PTPMode.MOVJ_ANGLE
+    # PTPMode.MOVJ_ANGLE
     device.move_to(j1, j2, j3, j4, wait=False)
-    #device.PTPMode.MOVJ_ANGLE(j1+10, j2, j3, j4, wait=True)
+    # device.PTPMode.MOVJ_ANGLE(j1+10, j2, j3, j4, wait=True)
     var = []
     for j in range(6):
         var.append(ent[j].get())
     print(var)
-def Detect():
+def Detect():  # 開啟攝影機
     t1 = threading.Thread(target=CVJOB)
     t1.start()
-def CVJOB():
+def CVJOB():  # 視覺辨識
     global target,detect_state,im
     detect_state =True
     # import argparse
-    def get_gray(img):  # 灰階
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        return gray
-
-    def get_blurred(img):  # 模糊化
-        gray = get_gray(img)
-        blurred = cv2.GaussianBlur(gray, (7, 7), 0)
-
-        return blurred
-
-    def get_binary(img):  # 黑白化
-        blur = get_blurred(img)
-        ret, binary = cv2.threshold(blur, 127, 255, cv2.THRESH_BINARY)
-
-        return binary
-
-    def get_contours(img):  # 獲取輪廓
-        binary = get_binary(img)
-        contours, hierachy = cv2.findContours(binary, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-
-        return contours
-
-    def draw_contours(img):  # 畫輪廓
-
-        contours = get_contours(img)
-        cv2.drawContours(img, contours, -1, (0, 0, 255), 3)
-
-        return None
-
-    def all_contour_X_Y(img):  # 要返回所有輪廓的X，Y值
-
-        g_img = get_gray(img)
-        binary_img = get_binary(g_img)
-        cnt = get_contours(binary_img)
-        draw_contours(img, cnt, -1(0, 0, 255), 3)
-
-        return img
-
-    """    lefttext = 'L'+str(Num+1)
-        cv2.putText(im, lefttext, (leftmost), cv2.FONT_HERSHEY_DUPLEX,1, (0, 255, 255), 1, cv2.LINE_AA)
-        print (leftmost)# show point and check 
-        """
-    """
-        print (centerX)
-        print (centerY)
-
-        print ("X=",leftY[0]/(-1*mRB[0]))
-        print ('left point ',left_point)
-        print ('bottom point ',bottom_point)
-        print ('right point ',right_point)
-        print( 'mRb' ,mRB) #把numpy轉換成list
-        print('mLB',mLB)
-        """
     # cv2.imshow('123',binary)
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(1)    # 建立一個 VideoCapture 物件，物件會連接到一隻網路攝影機，我們可以靠著它的參數來指定要使用那一隻攝影機（0 代表第一隻、1 代表第二隻）。
     itt = 0
     # cv2.waitKey()
     while (True):
         # im = cv2.imread('2object.JPG')
-        ret, frame = cap.read()
+        ret, frame = cap.read()   # 從攝影機擷取一張影像
         im = cv2.resize(frame, (500, 500), interpolation=cv2.INTER_CUBIC)
-
         gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-        # hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
         blurred = cv2.GaussianBlur(gray, (7, 7), 0)
         low_threshold = 1
         high_threshold = 10
         edges = cv2.Canny(blurred, low_threshold, high_threshold)
-        ret, binary = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
+        #ret, binary = cv2.threshold(blurred, 127, 255, cv2.THRESH_BINARY)
         contours, hierachy = cv2.findContours(edges, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-        # cv2.drawContours(im, contours, -1, (0, 0, 255), 3)
         cnt_count = []
-        # cnt_count_index = cnt_count -1
         centerX = []
         centerY = []
         # print(bool(contours))
@@ -250,13 +192,13 @@ def Next():
     print('儲存:', 'photo' + str(itt) + '.png')
 def Previous():
     print("Previous")
-def Sucker():
+def Sucker():    # 儲存檔案txt檔
     print("Sucker")
     with open('path_data'+str(itt)+'.txt', 'w') as filehandle:
         for place in range(len(list_x)):
             filehandle.writelines("%s," % int(list_x[place]) + "%s," % int(list_y[place])+"%s\n" % int(list_z[place]))
 
-def Move():
+def Move():   # 開始手臂移動
     global target
     t3 = threading.Thread(target=MoveJOB)
 
@@ -265,9 +207,9 @@ def Move():
     print("Move")
 
 points= np.array([[58, -187, -40],
-                           [156,-38,30],  #障礙物1
-                            [230,70,20], #障礙物2
-                           [target[0],target[1],10]])
+                           [156,-38,30],  # 障礙物1
+                           # [230,70,20],  # 障礙物2
+                           [178,-12,10]])
 def MoveJOB():
     global state
     t = threading.Thread(target=job)
@@ -294,9 +236,9 @@ def MoveJOB():
 
 
 
-def Place():
+def Place():     # 路徑圖
     global list_z,list_x,list_y,itt
-    ##動作完畢 開始繪圖
+    ## 動作完畢 開始繪圖
     # 建立 3D 圖形
     fig = plt.figure()
     ax = fig.gca(projection='3d')
@@ -313,7 +255,8 @@ def Place():
     ax.plot(x_array, y_array, z_array, color='gray', label='Arm path')
     asur = ax.scatter(x_array, y_array, z_array, c=z_array, cmap=cm.gist_rainbow, label='via point')
     fig.colorbar(asur, shrink=0.5, aspect=5)
-#畫障礙物
+# 畫障礙物
+    '''
     us = np.linspace(0, 2 * np.pi, 50)
     zs = np.linspace(-63, 74-63, 2)
 
@@ -330,6 +273,7 @@ def Place():
     xs1 = 40 * np.cos(us1)+points[2][0]
     ys1 = 40 * np.sin(us1)+points[2][1]
     ax.plot_surface(xs1, ys1, zs1, color='b')
+    '''
     # 顯示圖例
     ax.legend()
     print(list_x)
